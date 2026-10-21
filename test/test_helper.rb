@@ -18,6 +18,8 @@ module TestHelper
     @template_repo ||= begin
       dir = File.realpath(Dir.mktmpdir("wtr-template"))
       run_in("git", "init", "-q", "-b", "main", dir: dir)
+      run_in("git", "config", "maintenance.auto", "false", dir: dir)
+      run_in("git", "config", "gc.auto", "0", dir: dir)
       File.write(File.join(dir, "README.md"), "test repo")
       run_in("git", "add", ".", dir: dir)
       commit("initial", dir: dir)
