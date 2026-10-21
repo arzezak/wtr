@@ -164,6 +164,70 @@ class NewCommandHooksTest < TempRepoTest
     assert_includes stderr, "skipping does-not-exist.env"
   end
 
+  def test_does_not_copy_through_a_symlink_checked_out_on_the_new_branch
+    Dir.mktmpdir("wtr-outside") do |outside|
+      target = File.join(outside, "rcfile")
+      File.write(target, "original")
+      commit_on_branch("evil") { File.symlink(target, "payload") }
+      File.write("payload", "echo PWNED")
+      File.write(".wtr.yml", <<~YAML)
+        copy:
+          - payload
+      YAML
+
+      _, _, stderr = TestHelper.run_wtr("new", "evil")
+
+      assert_equal "original", File.read(target)
+      assert_includes stderr, "skipping payload"
+    end
+  end
+
+  def test_does_not_copy_a_source_symlinked_outside_the_main_worktree
+    Dir.mktmpdir("wtr-outside") do |outside|
+      secret = File.join(outside, "id_rsa")
+      File.write(secret, "PRIVATE KEY")
+      File.symlink(secret, "shared.env")
+      File.write(".wtr.yml", <<~YAML)
+        copy:
+          - shared.env
+      YAML
+
+      _, _, stderr = TestHelper.run_wtr("new", "leak-branch")
+
+      refute File.exist?(File.join(worktree_path("leak-branch"), "shared.env"))
+      assert_includes stderr, "skipping shared.env"
+    end
+  end
+
+  def test_does_not_copy_into_a_directory_symlinked_on_the_new_branch
+    Dir.mktmpdir("wtr-outside") do |outside|
+      commit_on_branch("evil-dir") { File.symlink(outside, "config") }
+      FileUtils.mkdir_p("config")
+      File.write("config/master.key", "echo PWNED")
+      File.write(".wtr.yml", <<~YAML)
+        copy:
+          - config/master.key
+      YAML
+
+      _, _, stderr = TestHelper.run_wtr("new", "evil-dir")
+
+      refute File.exist?(File.join(outside, "master.key"))
+      assert_includes stderr, "skipping config/master.key"
+    end
+  end
+
+  def test_skips_copying_the_main_worktree_itself
+    File.write(".wtr.yml", <<~YAML)
+      copy:
+        - .
+    YAML
+
+    exit_code, _, stderr = TestHelper.run_wtr("new", "dot-branch")
+
+    assert_equal 0, exit_code
+    assert_includes stderr, "skipping ."
+  end
+
   def test_skips_hooks_entirely_with_no_hooks_flag
     File.write(".wtr.yml", <<~YAML)
       after_create:
@@ -174,6 +238,16 @@ class NewCommandHooksTest < TempRepoTest
 
     marker = File.join(worktree_path("no-hooks-branch"), "should-not-exist.txt")
     refute File.exist?(marker)
+  end
+
+  private
+
+  def commit_on_branch(branch)
+    TestHelper.run_in("git", "checkout", "-q", "-b", branch)
+    yield
+    TestHelper.run_in("git", "add", ".")
+    TestHelper.commit(branch)
+    TestHelper.run_in("git", "checkout", "-q", "main")
   end
 end
 
