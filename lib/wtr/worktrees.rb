@@ -23,26 +23,17 @@ module Wtr
 
     Added = Data.define(:path, :existed)
 
+    DIRECTORY = ".worktrees"
+
     class Error < StandardError; end
 
-    class GitError < Error
-      attr_reader :stderr
-
-      def initialize(stderr)
-        @stderr = stderr
-        message = stderr.strip
-        super(message.empty? ? "git command failed" : message)
-      end
-    end
+    class GitError < Error; end
 
     class NothingToPick < Error; end
 
     class NameRequired < Error
-      attr_reader :names
-
       def initialize(names)
-        @names = names
-        super("pass a name: #{names.join(", ")}")
+        super("pass a name (tab-completes): #{names.join(", ")}")
       end
     end
 
@@ -71,6 +62,7 @@ module Wtr
 
     def initialize
       @all = nil
+      @main = nil
     end
 
     def all
@@ -78,7 +70,7 @@ module Wtr
     end
 
     def main
-      all.find(&:main?) || raise(Error, "cannot find the main worktree")
+      @main ||= all.find(&:main?) || raise(Error, "cannot find the main worktree")
     end
 
     def names(main_alias: false)
@@ -93,7 +85,7 @@ module Wtr
     end
 
     def create(branch, base: nil)
-      root = File.join(main.path, ".worktrees")
+      root = File.join(main.path, DIRECTORY)
       path = File.join(root, branch.tr("/", "-"))
       return Added.new(path: path, existed: true) if Dir.exist?(path)
 
@@ -142,11 +134,9 @@ module Wtr
     end
 
     def ensure_ignored
-      marker = ".worktrees/"
+      marker = "#{DIRECTORY}/"
       exclude_file = git("rev-parse", "--path-format=absolute", "--git-path", "info/exclude")
-      if File.exist?(exclude_file)
-        return if File.read(exclude_file).lines.any? { |line| line.strip == marker }
-      end
+      return if File.exist?(exclude_file) && File.read(exclude_file).lines.any? { |line| line.strip == marker }
 
       FileUtils.mkdir_p(File.dirname(exclude_file))
       File.open(exclude_file, "a") { |file| file.puts marker }
@@ -158,7 +148,7 @@ module Wtr
 
     def git(*args)
       stdout, stderr, status = Open3.capture3("git", *args)
-      raise GitError.new(stderr) unless status.success?
+      raise GitError, (stderr.strip.empty? ? "git command failed" : stderr.strip) unless status.success?
 
       stdout.strip
     end

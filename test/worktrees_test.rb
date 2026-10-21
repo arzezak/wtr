@@ -37,7 +37,7 @@ class WorktreesResolveTest < Minitest::Test
     [nil, "", "  "].each do |query|
       error = assert_raises(Wtr::Worktrees::NameRequired) { resolve(query) }
 
-      assert_equal ["feature-auth", "feature-api", "bugfix-login"], error.names
+      assert_equal "pass a name (tab-completes): feature-auth, feature-api, bugfix-login", error.message
     end
   end
 
@@ -91,7 +91,7 @@ class WorktreesTest < TempRepoTest
   end
 
   def test_lists_the_main_worktree_first
-    create("feature")
+    create_worktree("feature")
     worktrees = Wtr::Worktrees.new.all
 
     assert_equal [Dir.pwd, worktree_path("feature")], worktrees.map(&:path)
@@ -105,7 +105,7 @@ class WorktreesTest < TempRepoTest
   end
 
   def test_names_exclude_main_unless_aliased
-    create("feature")
+    create_worktree("feature")
     worktrees = Wtr::Worktrees.new
 
     assert_equal ["feature"], worktrees.names
@@ -113,7 +113,7 @@ class WorktreesTest < TempRepoTest
   end
 
   def test_find_resolves_non_main_worktrees
-    create("feature")
+    create_worktree("feature")
 
     assert_equal worktree_path("feature"), Wtr::Worktrees.new.find("feat").path
   end
@@ -139,7 +139,7 @@ class WorktreesTest < TempRepoTest
 
   def test_create_makes_a_new_branch_from_base
     base = TestHelper.run_in("git", "rev-parse", "HEAD")
-    TestHelper.run_in("git", "-c", "user.email=test@test.com", "-c", "user.name=Test", "commit", "--allow-empty", "-q", "-m", "second")
+    TestHelper.commit("second")
 
     added = @worktrees.create("from-base", base: base)
 
@@ -155,7 +155,7 @@ class WorktreesTest < TempRepoTest
   end
 
   def test_create_reports_an_existing_worktree_without_touching_git
-    create("feature")
+    create_worktree("feature")
 
     added = Wtr::Worktrees.new.create("feature")
 
@@ -164,7 +164,7 @@ class WorktreesTest < TempRepoTest
   end
 
   def test_create_ignores_the_worktrees_directory_once
-    create("one")
+    create_worktree("one")
     Wtr::Worktrees.new.create("two")
 
     exclude = File.read(File.join(Dir.pwd, ".git", "info", "exclude"))
@@ -174,11 +174,11 @@ class WorktreesTest < TempRepoTest
   def test_create_raises_git_error_on_failure
     error = assert_raises(Wtr::Worktrees::GitError) { @worktrees.create("main") }
 
-    refute_empty error.stderr
+    refute_empty error.message
   end
 
   def test_remove_keeps_the_branch_by_default
-    create("feature")
+    create_worktree("feature")
     worktrees = Wtr::Worktrees.new
 
     assert_nil worktrees.remove(worktrees.find("feature"))
@@ -187,8 +187,8 @@ class WorktreesTest < TempRepoTest
   end
 
   def test_remove_deletes_an_unmerged_branch_on_request
-    create("feature")
-    TestHelper.run_in("git", "-c", "user.email=test@test.com", "-c", "user.name=Test", "commit", "--allow-empty", "-q", "-m", "unmerged", dir: worktree_path("feature"))
+    create_worktree("feature")
+    TestHelper.commit("unmerged", dir: worktree_path("feature"))
     worktrees = Wtr::Worktrees.new
 
     assert_equal "feature", worktrees.remove(worktrees.find("feature"), delete_branch: true)
@@ -216,15 +216,7 @@ class WorktreesTest < TempRepoTest
 
   private
 
-  def create(branch)
-    Wtr::Worktrees.new.create(branch)
-  end
-
-  def worktree_path(name)
-    File.join(Dir.pwd, ".worktrees", name)
-  end
-
   def branch_in(path)
-    TestHelper.run_in("git", "branch", "--show-current", dir: path).strip
+    TestHelper.run_in("git", "branch", "--show-current", dir: path)
   end
 end

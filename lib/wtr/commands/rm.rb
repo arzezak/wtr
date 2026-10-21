@@ -10,16 +10,15 @@ module Wtr
         inside = worktree.contains?(Dir.pwd)
         return Result.none if inside && !confirm_removal?(worktree)
 
-        main_path = @worktrees.main.path
         deleted = @worktrees.remove(worktree, delete_branch: delete_branch)
         Log.puts removal_message(worktree, delete_branch, deleted)
 
-        inside ? Result.cd(main_path) : Result.none
+        inside ? Result.cd(@worktrees.main.path) : Result.none
       rescue Worktrees::NothingToPick
         Log.puts "no worktrees to remove"
         Result.none
       rescue Worktrees::NameRequired => e
-        Log.puts "pass a name (tab-completes): #{e.names.join(", ")}"
+        Log.puts e.message
         Result.none
       end
 

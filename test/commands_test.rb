@@ -38,7 +38,7 @@ class LsCommandTest < TempRepoTest
   end
 
   def test_aligns_the_head_column_across_rows_with_long_flag
-    TestHelper.run_wtr("new", "a-much-longer-branch-name")
+    create_worktree("a-much-longer-branch-name")
 
     _, stdout, _ = TestHelper.run_wtr("ls", "-l")
 
@@ -61,7 +61,7 @@ class NewCommandTest < TempRepoTest
     assert_equal 0, exit_code
     assert stdout.start_with?("cd "), "expected a cd directive, got: #{stdout}"
     assert_includes stdout, ".worktrees/test-feature"
-    assert Dir.exist?(File.join(Dir.pwd, ".worktrees", "test-feature"))
+    assert Dir.exist?(worktree_path("test-feature"))
   end
 
   def test_sanitizes_slashes_in_branch_names
@@ -72,7 +72,7 @@ class NewCommandTest < TempRepoTest
   end
 
   def test_emits_cd_when_worktree_already_exists
-    TestHelper.run_wtr("new", "existing")
+    create_worktree("existing")
 
     exit_code, stdout, stderr = TestHelper.run_wtr("new", "existing")
 
@@ -107,7 +107,7 @@ class NewCommandHooksTest < TempRepoTest
 
     TestHelper.run_wtr("new", "feature/foo")
 
-    marker = File.join(Dir.pwd, ".worktrees", "feature-foo", "marker.txt")
+    marker = File.join(worktree_path("feature-foo"), "marker.txt")
     assert_equal "name=feature-foo\n", File.read(marker)
   end
 
@@ -134,7 +134,7 @@ class NewCommandHooksTest < TempRepoTest
 
     _, _, stderr = TestHelper.run_wtr("new", "failing-branch")
 
-    marker = File.join(Dir.pwd, ".worktrees", "failing-branch", "should-not-exist.txt")
+    marker = File.join(worktree_path("failing-branch"), "should-not-exist.txt")
     refute File.exist?(marker)
     assert_includes stderr, "after_create failed"
   end
@@ -148,7 +148,7 @@ class NewCommandHooksTest < TempRepoTest
 
     TestHelper.run_wtr("new", "copy-branch")
 
-    copied = File.join(Dir.pwd, ".worktrees", "copy-branch", "shared.env")
+    copied = File.join(worktree_path("copy-branch"), "shared.env")
     assert_equal "SECRET=1", File.read(copied)
   end
 
@@ -172,7 +172,7 @@ class NewCommandHooksTest < TempRepoTest
 
     TestHelper.run_wtr("new", "no-hooks-branch", "--no-hooks")
 
-    marker = File.join(Dir.pwd, ".worktrees", "no-hooks-branch", "should-not-exist.txt")
+    marker = File.join(worktree_path("no-hooks-branch"), "should-not-exist.txt")
     refute File.exist?(marker)
   end
 end
@@ -187,7 +187,7 @@ class CdCommandTest < TempRepoTest
   end
 
   def test_resolves_by_exact_name
-    TestHelper.run_wtr("new", "target")
+    create_worktree("target")
 
     exit_code, stdout, _ = TestHelper.run_wtr("cd", "target")
 
@@ -197,7 +197,7 @@ class CdCommandTest < TempRepoTest
   end
 
   def test_resolves_by_unique_prefix
-    TestHelper.run_wtr("new", "unique-branch")
+    create_worktree("unique-branch")
 
     exit_code, stdout, _ = TestHelper.run_wtr("cd", "uni")
 
@@ -206,7 +206,7 @@ class CdCommandTest < TempRepoTest
   end
 
   def test_fails_on_no_match
-    TestHelper.run_wtr("new", "some-branch")
+    create_worktree("some-branch")
 
     exit_code, _, stderr = TestHelper.run_wtr("cd", "nonexistent")
 
@@ -215,7 +215,7 @@ class CdCommandTest < TempRepoTest
   end
 
   def test_returns_to_the_main_worktree_with_main
-    TestHelper.run_wtr("new", "leaf")
+    create_worktree("leaf")
 
     exit_code, stdout, _ = TestHelper.run_wtr("cd", "main")
 
@@ -225,8 +225,8 @@ class CdCommandTest < TempRepoTest
   end
 
   def test_returns_to_the_previous_worktree_with_dash
-    previous = File.join(Dir.pwd, ".worktrees", "leaf")
-    TestHelper.run_wtr("new", "leaf")
+    previous = worktree_path("leaf")
+    create_worktree("leaf")
 
     ENV["WTR_PREV"] = previous
     begin
@@ -252,8 +252,8 @@ end
 
 class RmCommandTest < TempRepoTest
   def test_removes_a_worktree_by_name
-    TestHelper.run_wtr("new", "to-remove")
-    wt_path = File.join(Dir.pwd, ".worktrees", "to-remove")
+    create_worktree("to-remove")
+    wt_path = worktree_path("to-remove")
     assert Dir.exist?(wt_path)
 
     exit_code, _, stderr = TestHelper.run_wtr("rm", "to-remove")
@@ -265,14 +265,14 @@ class RmCommandTest < TempRepoTest
   end
 
   def test_deletes_the_branch_with_b_flag
-    TestHelper.run_wtr("new", "doomed")
-    TestHelper.run_in("git", "-c", "user.email=test@test.com", "-c", "user.name=Test", "commit", "--allow-empty", "-q", "-m", "unmerged", dir: File.join(Dir.pwd, ".worktrees", "doomed"))
+    create_worktree("doomed")
+    TestHelper.commit("unmerged", dir: worktree_path("doomed"))
 
     exit_code, _, stderr = TestHelper.run_wtr("rm", "doomed", "-b")
 
     assert_equal 0, exit_code
     assert_includes stderr, "removed doomed and deleted branch doomed"
-    refute_includes TestHelper.run_in("git", "branch", "--format=%(refname:short)").lines.map(&:strip), "doomed"
+    refute_includes Wtr::Worktrees.new.branches, "doomed"
   end
 
   def test_rejects_unknown_flags
@@ -283,10 +283,10 @@ class RmCommandTest < TempRepoTest
   end
 
   def test_does_not_prompt_from_a_sibling_sharing_the_prefix
-    TestHelper.run_wtr("new", "foo")
-    TestHelper.run_wtr("new", "foo-bar")
+    create_worktree("foo")
+    create_worktree("foo-bar")
 
-    exit_code, stdout, stderr = TestHelper.run_wtr("rm", "foo", dir: File.join(Dir.pwd, ".worktrees", "foo-bar"))
+    exit_code, stdout, stderr = TestHelper.run_wtr("rm", "foo", dir: worktree_path("foo-bar"))
 
     assert_equal 0, exit_code
     refute_includes stderr, "you're inside"
@@ -327,7 +327,7 @@ end
 
 class CompleteCommandTest < TempRepoTest
   def test_returns_worktree_names
-    TestHelper.run_wtr("new", "comp-test")
+    create_worktree("comp-test")
 
     exit_code, stdout, _ = TestHelper.run_wtr("__complete", "worktrees")
 

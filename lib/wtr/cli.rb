@@ -72,30 +72,35 @@ module Wtr
     end
 
     def dispatch_ls(args)
-      short = args.delete("-l")
-      long = args.delete("--long")
-      unknown = args.find { |arg| arg.start_with?("-") }
-      raise "unknown flag '#{unknown}' for ls" if unknown
+      long = flag?(args, "-l", "--long")
+      reject_unknown_flags(args, "ls")
 
-      Commands::Ls.new(worktrees).run(long: !(short.nil? && long.nil?))
+      Commands::Ls.new(worktrees).run(long: long)
     end
 
     def dispatch_rm(args)
-      short = args.delete("-b")
-      long = args.delete("--branch")
-      unknown = args.find { |arg| arg.start_with?("-") }
-      raise "unknown flag '#{unknown}' for rm" if unknown
+      delete_branch = flag?(args, "-b", "--branch")
+      reject_unknown_flags(args, "rm")
 
-      Commands::Rm.new(worktrees).run(args.first, delete_branch: !(short.nil? && long.nil?))
+      Commands::Rm.new(worktrees).run(args.first, delete_branch: delete_branch)
     end
 
     def dispatch_new(args)
-      hooks = args.delete("--no-hooks").nil?
+      hooks = !flag?(args, "--no-hooks")
       branch = args.shift
       base = args.shift
       raise "usage: wtr new <branch> [base] [--no-hooks]" unless branch
 
       Commands::New.new(worktrees).run(branch, base, hooks: hooks)
+    end
+
+    def flag?(args, *names)
+      names.map { |name| args.delete(name) }.any?
+    end
+
+    def reject_unknown_flags(args, subcommand)
+      unknown = args.find { |arg| arg.start_with?("-") }
+      raise "unknown flag '#{unknown}' for #{subcommand}" if unknown
     end
 
     def worktrees

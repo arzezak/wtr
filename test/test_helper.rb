@@ -6,14 +6,28 @@ require_relative "../lib/wtr"
 
 module TestHelper
   BINARY_PATH = File.expand_path(ENV["WTR_BIN"] || "exe/wtr", File.expand_path("..", __dir__))
+  CLEAN_ENV = {"RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil}.freeze
 
   def self.create_temp_repo
     dir = File.realpath(Dir.mktmpdir("wtr-test"))
-    run_in("git", "init", "-q", "-b", "main", dir: dir)
-    File.write(File.join(dir, "README.md"), "test repo")
-    run_in("git", "add", ".", dir: dir)
-    run_in("git", "-c", "user.email=test@test.com", "-c", "user.name=Test", "commit", "-q", "-m", "initial", dir: dir)
+    FileUtils.cp_r(File.join(template_repo, "."), dir)
     dir
+  end
+
+  def self.template_repo
+    @template_repo ||= begin
+      dir = File.realpath(Dir.mktmpdir("wtr-template"))
+      run_in("git", "init", "-q", "-b", "main", dir: dir)
+      File.write(File.join(dir, "README.md"), "test repo")
+      run_in("git", "add", ".", dir: dir)
+      commit("initial", dir: dir)
+      Minitest.after_run { FileUtils.rm_rf(dir) }
+      dir
+    end
+  end
+
+  def self.commit(message, dir: Dir.pwd)
+    run_in("git", "-c", "user.email=test@test.com", "-c", "user.name=Test", "commit", "--allow-empty", "-q", "-m", message, dir: dir)
   end
 
   def self.run_in(command, *args, dir: Dir.pwd)
@@ -29,7 +43,7 @@ module TestHelper
   end
 
   def self.capture(command, args, dir)
-    stdout, stderr, status = Open3.capture3(command, *args, chdir: dir)
+    stdout, stderr, status = Open3.capture3(CLEAN_ENV, command, *args, chdir: dir)
     [status, utf8(stdout).strip, utf8(stderr).strip]
   end
 
@@ -48,5 +62,15 @@ class TempRepoTest < Minitest::Test
   def teardown
     Dir.chdir(@previous_dir)
     FileUtils.rm_rf(@repo_dir)
+  end
+
+  private
+
+  def create_worktree(branch)
+    Wtr::Worktrees.new.create(branch).path
+  end
+
+  def worktree_path(name)
+    File.join(Dir.pwd, Wtr::Worktrees::DIRECTORY, name)
   end
 end

@@ -1,7 +1,5 @@
 module Wtr
   class Result
-    attr_reader :cd_path, :stdout
-
     def initialize(cd_path: nil, stdout: nil)
       @cd_path = cd_path
       @stdout = stdout

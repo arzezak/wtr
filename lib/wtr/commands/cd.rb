@@ -13,7 +13,7 @@ module Wtr
         Log.puts "only one worktree here, use 'wtr new <branch>' to create another"
         Result.none
       rescue Worktrees::NameRequired => e
-        Log.puts "pass a name (tab-completes): #{e.names.join(", ")}"
+        Log.puts e.message
         Result.none
       end
 

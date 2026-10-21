@@ -8,13 +8,12 @@ module Wtr
       end
 
       def run(branch, base = nil, hooks: true)
-        main_path = @worktrees.main.path
         added = @worktrees.create(branch, base: base)
 
         if added.existed
           Log.puts "worktree already exists at #{added.path}"
         elsif hooks
-          run_hooks(main_path, added.path)
+          run_hooks(@worktrees.main.path, added.path)
         end
 
         Result.cd(added.path)
@@ -47,7 +46,7 @@ module Wtr
       end
 
       def run_after_create(config, worktree_path)
-        env = hook_env(worktree_path)
+        env = {"WTR_WORKTREE_NAME" => File.basename(worktree_path)}
 
         config.after_create.each do |command|
           Log.step("run", command)
@@ -59,10 +58,6 @@ module Wtr
             break
           end
         end
-      end
-
-      def hook_env(worktree_path)
-        {"WTR_WORKTREE_NAME" => File.basename(worktree_path)}
       end
     end
   end

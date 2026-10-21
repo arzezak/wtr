@@ -22,12 +22,12 @@ module Wtr
     end
 
     def self.load_file(path)
-      return nil unless File.exist?(path)
+      return Config.new unless File.exist?(path)
 
       parse(File.read(path))
     rescue Psych::SyntaxError => e
       Log.puts "failed to parse #{path}: #{e.message}"
-      nil
+      Config.new
     end
 
     def self.parse(content)
@@ -40,15 +40,13 @@ module Wtr
       node = yaml[key]
       return [] unless node.is_a?(Array) && node.all? { |item| item.is_a?(String) }
 
-      node.map(&:to_s)
+      node
     end
 
     def self.merge(configs)
       copy = []
       after_create = []
       configs.each do |config|
-        next unless config
-
         copy = config.copy unless config.copy.empty?
         after_create = config.after_create unless config.after_create.empty?
       end
