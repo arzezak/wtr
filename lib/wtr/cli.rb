@@ -95,7 +95,7 @@ module Wtr
     end
 
     def flag?(args, *names)
-      names.map { |name| args.delete(name) }.compact.any? # Spinel: matz/spinel#9883
+      names.map { |name| args.delete(name) }.any?
     end
 
     def reject_unknown_flags(args, subcommand)
