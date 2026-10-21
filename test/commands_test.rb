@@ -282,6 +282,18 @@ class RmCommandTest < TempRepoTest
     assert_includes stderr, "unknown flag '--bogus' for rm"
   end
 
+  def test_does_not_prompt_from_a_sibling_sharing_the_prefix
+    TestHelper.run_wtr("new", "foo")
+    TestHelper.run_wtr("new", "foo-bar")
+
+    exit_code, stdout, stderr = TestHelper.run_wtr("rm", "foo", dir: File.join(Dir.pwd, ".worktrees", "foo-bar"))
+
+    assert_equal 0, exit_code
+    refute_includes stderr, "you're inside"
+    assert_includes stderr, "removed foo"
+    assert_empty stdout
+  end
+
   def test_reports_no_worktrees_to_remove
     exit_code, _, stderr = TestHelper.run_wtr("rm", "anything")
 

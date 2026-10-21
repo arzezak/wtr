@@ -73,6 +73,10 @@ class WorktreeTest < Minitest::Test
     refute worktree.contains?("/repo")
   end
 
+  def test_does_not_contain_a_sibling_sharing_its_prefix
+    refute worktree("/repo/.worktrees/foo").contains?("/repo/.worktrees/foo-bar")
+  end
+
   private
 
   def worktree(path)

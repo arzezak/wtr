@@ -17,7 +17,7 @@ module Wtr
       end
 
       def contains?(dir)
-        dir.start_with?(path)
+        dir == path || dir.start_with?(path + "/")
       end
     end
 
