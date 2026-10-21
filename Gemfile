@@ -2,7 +2,6 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in wtr.gemspec
 gemspec
 
 gem "irb"

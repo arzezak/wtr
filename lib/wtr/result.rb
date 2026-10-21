@@ -27,8 +27,6 @@ module Wtr
       end
     end
 
-    # Quotes one word for the shell wrapper's eval: a word of safe characters
-    # goes through bare, anything else is single-quoted.
     def self.shell_quote(arg)
       return "''" if arg.empty?
       return arg unless arg.match?(/[^a-zA-Z0-9%+,\-.\/:=@_]/)

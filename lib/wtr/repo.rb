@@ -32,7 +32,6 @@ module Wtr
 
     private
 
-    # Lazy so commands that never need the repo path skip the git spawn.
     def common_dir
       @common_dir ||= @git.common_dir
     end

@@ -38,7 +38,6 @@ module Wtr
         lines.join("\n")
       end
 
-      # The last column has no width because it is left unpadded.
       def column_widths(rows)
         (0...rows.first.size - 1).map { |i| rows.map { |row| row[i].size }.max }
       end

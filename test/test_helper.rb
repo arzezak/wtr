@@ -5,8 +5,6 @@ require "open3"
 require_relative "../lib/wtr"
 
 module TestHelper
-  # The executable under test: exe/wtr under CRuby by default, or whatever
-  # WTR_BIN names (e.g. a Spinel-compiled binary).
   BINARY_PATH = File.expand_path(ENV["WTR_BIN"] || "exe/wtr", File.expand_path("..", __dir__))
 
   def self.create_temp_repo
@@ -35,13 +33,11 @@ module TestHelper
     [status, utf8(stdout).strip, utf8(stderr).strip]
   end
 
-  # wtr writes UTF-8 whatever the locale says (the help text and hook lines carry non-ASCII).
   def self.utf8(text)
     text.dup.force_encoding(Encoding::UTF_8)
   end
 end
 
-# Runs each test inside a fresh temp git repo, cleaning up afterwards.
 class TempRepoTest < Minitest::Test
   def setup
     @previous_dir = Dir.pwd

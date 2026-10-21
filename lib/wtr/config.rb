@@ -36,7 +36,6 @@ module Wtr
       Config.new(copy: string_array(yaml, "copy"), after_create: string_array(yaml, "after_create"))
     end
 
-    # The key's list of strings, or an empty list when it is absent or anything else.
     def self.string_array(yaml, key)
       node = yaml[key]
       return [] unless node.is_a?(Array) && node.all? { |item| item.is_a?(String) }
@@ -44,7 +43,6 @@ module Wtr
       node.map(&:to_s)
     end
 
-    # Later configs win per key: a non-empty list replaces the earlier one.
     def self.merge(configs)
       copy = []
       after_create = []
