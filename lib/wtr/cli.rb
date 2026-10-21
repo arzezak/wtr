@@ -34,8 +34,7 @@ module Wtr
     HELP
 
     def initialize
-      @git = nil
-      @resolver = nil
+      @worktrees = nil
     end
 
     def run(args)
@@ -58,7 +57,7 @@ module Wtr
       when "init"
         Completion.init_script(args.first || "zsh")
       when "cd"
-        Commands::Cd.new(resolver).run(args.first)
+        Commands::Cd.new(worktrees).run(args.first)
       when "new"
         dispatch_new(args)
       when "rm"
@@ -66,7 +65,7 @@ module Wtr
       when "ls", "list"
         dispatch_ls(args)
       when "__complete"
-        Completion.new(git, resolver).complete(args.first || "subcommands")
+        Completion.new(worktrees).complete(args.first || "subcommands")
       else
         raise "unknown subcommand '#{subcommand}'\n#{HELP}"
       end
@@ -78,7 +77,7 @@ module Wtr
       unknown = args.find { |arg| arg.start_with?("-") }
       raise "unknown flag '#{unknown}' for ls" if unknown
 
-      Commands::Ls.new(git).run(long: !(short.nil? && long.nil?))
+      Commands::Ls.new(worktrees).run(long: !(short.nil? && long.nil?))
     end
 
     def dispatch_rm(args)
@@ -87,7 +86,7 @@ module Wtr
       unknown = args.find { |arg| arg.start_with?("-") }
       raise "unknown flag '#{unknown}' for rm" if unknown
 
-      Commands::Rm.new(resolver, git).run(args.first, delete_branch: !(short.nil? && long.nil?))
+      Commands::Rm.new(worktrees).run(args.first, delete_branch: !(short.nil? && long.nil?))
     end
 
     def dispatch_new(args)
@@ -96,15 +95,11 @@ module Wtr
       base = args.shift
       raise "usage: wtr new <branch> [base] [--no-hooks]" unless branch
 
-      Commands::New.new(git, Repo.new(git)).run(branch, base, hooks: hooks)
+      Commands::New.new(worktrees).run(branch, base, hooks: hooks)
     end
 
-    def git
-      @git ||= Git.new
-    end
-
-    def resolver
-      @resolver ||= Resolver.new(git)
+    def worktrees
+      @worktrees ||= Worktrees.new
     end
   end
 end

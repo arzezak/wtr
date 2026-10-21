@@ -1,22 +1,23 @@
 module Wtr
   module Commands
     class Cd
-      def initialize(resolver)
-        @resolver = resolver
+      def initialize(worktrees)
+        @worktrees = worktrees
       end
 
       def run(query = nil)
         return cd_previous if query == "-"
-        return cd_main if main_query?(query)
 
-        cd_worktree(query)
+        Result.cd(@worktrees.find(query, main_alias: true).path)
+      rescue Worktrees::NothingToPick
+        Log.puts "only one worktree here, use 'wtr new <branch>' to create another"
+        Result.none
+      rescue Worktrees::NameRequired => e
+        Log.puts "pass a name (tab-completes): #{e.names.join(", ")}"
+        Result.none
       end
 
       private
-
-      def cd_main
-        Result.cd(@resolver.main_entry.path)
-      end
 
       def cd_previous
         previous = ENV["WTR_PREV"]
@@ -32,20 +33,6 @@ module Wtr
         end
 
         Result.cd(previous)
-      end
-
-      def cd_worktree(query)
-        entry = @resolver.pick(query, "only one worktree here, use 'wtr new <branch>' to create another")
-        return Result.none unless entry
-
-        Result.cd(entry.path)
-      end
-
-      def main_query?(query)
-        return false unless query
-        return true if query == "main"
-
-        query == @resolver.main_entry.branch
       end
     end
   end

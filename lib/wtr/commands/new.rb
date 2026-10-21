@@ -3,50 +3,32 @@ require "fileutils"
 module Wtr
   module Commands
     class New
-      def initialize(git, repo)
-        @git = git
-        @repo = repo
+      def initialize(worktrees)
+        @worktrees = worktrees
       end
 
       def run(branch, base = nil, hooks: true)
-        worktree_path = @repo.worktree_path_for(branch)
+        main_path = @worktrees.main.path
+        added = @worktrees.create(branch, base: base)
 
-        if Dir.exist?(worktree_path)
-          Log.puts "worktree already exists at #{worktree_path}"
-          return Result.cd(worktree_path)
+        if added.existed
+          Log.puts "worktree already exists at #{added.path}"
+        elsif hooks
+          run_hooks(main_path, added.path)
         end
 
-        ensure_worktree_root
-        create_worktree(branch, worktree_path, base)
-        run_hooks(worktree_path) if hooks
-        Result.cd(worktree_path)
+        Result.cd(added.path)
       end
 
       private
 
-      def ensure_worktree_root
-        FileUtils.mkdir_p(@repo.worktree_root)
-        @repo.ensure_ignored
-      end
-
-      def create_worktree(branch, worktree_path, base)
-        if @git.branch_exists?(branch)
-          @git.run("worktree", "add", worktree_path, branch)
-        else
-          args = ["worktree", "add", "-b", branch, worktree_path]
-          args << base if base
-          @git.run(*args)
-        end
-      end
-
-      def run_hooks(worktree_path)
-        config = Config.load(@repo.main_repo_path)
-        copy_files(config, worktree_path)
+      def run_hooks(main_path, worktree_path)
+        config = Config.load(main_path)
+        copy_files(config, main_path, worktree_path)
         run_after_create(config, worktree_path)
       end
 
-      def copy_files(config, worktree_path)
-        main_path = @repo.main_repo_path
+      def copy_files(config, main_path, worktree_path)
         config.copy.each do |relative_path|
           source = File.expand_path(relative_path, main_path)
           destination = File.expand_path(relative_path, worktree_path)

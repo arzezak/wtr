@@ -1,15 +1,15 @@
 module Wtr
   module Commands
     class Ls
-      def initialize(git)
-        @git = git
+      def initialize(worktrees)
+        @worktrees = worktrees
       end
 
       def run(long: false)
-        entries = @git.worktree_list
-        return Result.print("no worktrees") if entries.empty?
+        worktrees = @worktrees.all
+        return Result.print("no worktrees") if worktrees.empty?
 
-        rows = [header(long)] + entries.map { |entry| row_for(entry, long) }
+        rows = [header(long)] + worktrees.map { |worktree| row_for(worktree, long) }
         Result.print(render_table(rows))
       end
 
@@ -19,10 +19,10 @@ module Wtr
         long ? ["BRANCH", "HEAD", "PATH"] : ["BRANCH", "PATH"]
       end
 
-      def row_for(entry, long)
-        columns = [branch_label(entry)]
-        columns << entry.short_head if long
-        columns << tilde(entry.path)
+      def row_for(worktree, long)
+        columns = [branch_label(worktree)]
+        columns << worktree.short_head if long
+        columns << tilde(worktree.path)
         columns
       end
 
@@ -47,9 +47,9 @@ module Wtr
         path.start_with?(home) ? "~#{path[home.size..-1]}" : path # standard:disable Style/SlicingWithRange -- Spinel
       end
 
-      def branch_label(entry)
-        label = entry.branch || "(detached)"
-        entry.main? ? "#{label} *" : label
+      def branch_label(worktree)
+        label = worktree.branch || "(detached)"
+        worktree.main? ? "#{label} *" : label
       end
     end
   end

@@ -1,20 +1,19 @@
 module Wtr
   class Completion
-    def initialize(git, resolver)
-      @git = git
-      @resolver = resolver
+    def initialize(worktrees)
+      @worktrees = worktrees
     end
 
     def complete(kind)
       candidates = case kind
       when "worktrees"
-        @resolver.worktree_names
+        @worktrees.names
       when "cd_targets"
-        @resolver.worktree_names + ["main"]
+        @worktrees.names(main_alias: true)
       when "branches"
-        git_lines("branch", "--format=%(refname:short)")
+        @worktrees.branches
       when "refs"
-        git_lines("for-each-ref", "--format=%(refname:short)", "refs/heads/", "refs/tags/", "refs/remotes/")
+        @worktrees.refs
       when "subcommands"
         ["cd", "new", "rm", "ls", "help"]
       else
@@ -31,12 +30,6 @@ module Wtr
         Log.puts "unsupported shell '#{shell}' (available: zsh)"
         Result.none
       end
-    end
-
-    private
-
-    def git_lines(*args)
-      @git.run(*args).split("\n").reject(&:empty?)
     end
 
     ZSH_INIT_SCRIPT = <<~'ZSH'
