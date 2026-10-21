@@ -1,8 +1,15 @@
 # frozen_string_literal: true
 
 require_relative "wtr/version"
-
-module Wtr
-  class Error < StandardError; end
-  # Your code goes here...
-end
+require_relative "wtr/log"
+require_relative "wtr/result"
+require_relative "wtr/git"
+require_relative "wtr/repo"
+require_relative "wtr/resolver"
+require_relative "wtr/config"
+require_relative "wtr/completion"
+require_relative "wtr/commands/cd"
+require_relative "wtr/commands/ls"
+require_relative "wtr/commands/new"
+require_relative "wtr/commands/rm"
+require_relative "wtr/cli"

@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require_relative "../lib/wtr"
+
+Wtr::CLI.new.run(ARGV.dup)
