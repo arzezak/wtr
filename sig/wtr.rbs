@@ -1,3 +1,0 @@
-module Wtr
-  VERSION: String
-end
