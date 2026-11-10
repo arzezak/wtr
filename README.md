@@ -8,11 +8,19 @@ wtr is for people who want to create, switch between, and remove worktrees by ha
 
 ## Install
 
+With Homebrew, as a native binary compiled with [Spinel](https://github.com/matz/spinel):
+
+```sh
+brew install arzezak/tap/wtr
+```
+
+Or as a gem:
+
 ```sh
 gem install wtr
 ```
 
-Add to your `.zshrc`:
+Then add to your `.zshrc`:
 
 ```sh
 eval "$(command wtr init zsh)"
